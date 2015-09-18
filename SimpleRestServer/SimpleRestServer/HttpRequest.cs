@@ -20,6 +20,8 @@ namespace SimpleRestServer
 
         public string Uri { get; private set; }
 
+        public IDictionary<string, string> Query { get; private set; }
+
         private void Parse(string request)
         {
             string[] lines = request.Split('\n')
@@ -27,6 +29,7 @@ namespace SimpleRestServer
                                 .ToArray();
 
             ParseRequestLine(lines[0]);
+            ParseQueryParameters(Uri);
         }
 
         private void ParseRequestLine(string line)
@@ -53,6 +56,23 @@ namespace SimpleRestServer
                 default:
                     throw new Exception("unsupported http version");
             }
+        }
+
+        private void ParseQueryParameters(string uri)
+        {
+            if (!uri.Contains("?"))
+            {
+                return;
+            }
+
+            string query = uri.Substring(uri.IndexOf('?') + 1);
+            string[] keyValues = query.Split('&');
+
+            Query =
+                keyValues
+                    .Select(keyValue => keyValue.Split('='))
+                    .ToDictionary(keyValue => keyValue[0], keyValue => keyValue[1]);
+
         }
     }
 

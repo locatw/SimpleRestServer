@@ -40,5 +40,34 @@ namespace SimpleRestServer.Tests
                 Assert.AreEqual("/", request.Uri);
             }
         }
+
+        [TestClass]
+        public class RequestWithGetParameterParseTest
+        {
+            private readonly string requestTextTemplate =
+                "GET /index.html{0} HTTP/1.1" + "\r\n" +
+                "Host: sample.jp" + "\r\n";
+
+            [TestMethod]
+            public void GetValueWithSingleKeyValue()
+            {
+                var requestText = String.Format(requestTextTemplate, "?key=value");
+
+                var request = new HttpRequest(requestText);
+
+                Assert.AreEqual("value", request.Query["key"]);
+            }
+
+            [TestMethod]
+            public void GetValuesWithMultipleKeyValues()
+            {
+                var requestText = String.Format(requestTextTemplate, "?key1=value1&key2=value2");
+
+                var request = new HttpRequest(requestText);
+
+                Assert.AreEqual("value1", request.Query["key1"]);
+                Assert.AreEqual("value2", request.Query["key2"]);
+            }
+        }
     }
 }
