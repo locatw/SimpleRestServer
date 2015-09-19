@@ -39,6 +39,14 @@ namespace SimpleRestServer.Tests
 
                 Assert.AreEqual("/", request.Uri);
             }
+
+            [TestMethod]
+            public void HostFieldIsSampleDotJp()
+            {
+                var request = new HttpRequest(requestText);
+
+                Assert.AreEqual("sample.jp", request.Host);
+            }
         }
 
         [TestClass]
