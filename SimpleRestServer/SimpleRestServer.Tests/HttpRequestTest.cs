@@ -76,6 +76,16 @@ namespace SimpleRestServer.Tests
                 Assert.AreEqual("value1", request.Query["key1"]);
                 Assert.AreEqual("value2", request.Query["key2"]);
             }
+
+            [TestMethod]
+            public void UriDoesNotContainsQueryPart()
+            {
+                var requestText = String.Format(requestTextTemplate, "?key=value");
+
+                var request = new HttpRequest(requestText);
+
+                Assert.AreEqual("/index.html", request.Uri);
+            }
         }
     }
 }

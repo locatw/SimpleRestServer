@@ -20,6 +20,8 @@ namespace SimpleRestServer
 
         public string Uri { get; private set; }
 
+        public string UriWithQuery { get; private set; }
+
         public string Host { get; private set; }
 
         public IDictionary<string, string> Query { get; private set; }
@@ -31,7 +33,7 @@ namespace SimpleRestServer
                                 .ToArray();
 
             ParseRequestLine(lines[0]);
-            ParseQueryParameters(Uri);
+            ParseQueryParameters(UriWithQuery);
             ParseHeaderField(lines.Skip(1).ToArray());
         }
 
@@ -49,7 +51,10 @@ namespace SimpleRestServer
                 throw new Exception("unknown request method.");
             }
 
-            this.Uri = elems[1];
+            Uri = elems[1].IndexOf('?') == -1
+                        ? elems[1]
+                        : elems[1].Substring(0, elems[1].IndexOf('?'));
+            UriWithQuery = elems[1];
 
             switch (elems[2])
             {
