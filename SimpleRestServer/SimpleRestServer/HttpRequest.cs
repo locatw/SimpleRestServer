@@ -9,6 +9,15 @@ namespace SimpleRestServer
 {
     public class HttpRequest
     {
+        private const byte CR = 0x0d;
+
+        private const byte LF = 0x0a;
+
+        public HttpRequest(byte[] requestBytes)
+        {
+            ParseBytes(requestBytes);
+        }
+
         public HttpRequest(string request)
         {
             Parse(request);
@@ -26,11 +35,66 @@ namespace SimpleRestServer
 
         public IDictionary<string, string> Query { get; private set; }
 
+        private void ParseBytes(byte[] requestBytes)
+        {
+            MessagePart requestLinePart = FindRequestLinePart(requestBytes);
+            MessagePart headerFiledsPart = FindHeaderFieldsPart(requestBytes, requestLinePart);
+
+            string requestLine = MakeMessagePartString(requestBytes, requestLinePart);
+            string headerFields = MakeMessagePartString(requestBytes, headerFiledsPart);
+
+            ParseRequestLine(requestLine);
+            ParseQueryParameters(UriWithQuery);
+            ParseHeaderField(SplitLines(headerFields));
+        }
+
+        private MessagePart FindRequestLinePart(byte[] requestBytes)
+        {
+            int endPosition = Array.FindIndex(requestBytes, b => b == CR);
+
+            return new MessagePart(0, endPosition);
+        }
+
+        private MessagePart FindHeaderFieldsPart(byte[] requestBytes, MessagePart requestLinePart)
+        {
+            int emptyLinePosition = FindEmptyLinePosition(requestBytes, requestLinePart.Length);
+
+            if (emptyLinePosition == -1)
+            {
+                throw new Exception("invalid HTTP request header format. no empty line exists.");
+            }
+
+            int headerFieldsByteCount = emptyLinePosition - (requestLinePart.Length + 2);
+
+            return new MessagePart(requestLinePart.Length + 2, headerFieldsByteCount);
+        }
+
+        private int FindEmptyLinePosition(byte[] requestBytes, int requestLineEndPosition)
+        {
+            int emptyLinePosition = -1;
+            for (int i = requestLineEndPosition + 2; i <= requestBytes.Length - 4; i++)
+            {
+                if (requestBytes[i + 0] == CR &&
+                    requestBytes[i + 1] == LF &&
+                    requestBytes[i + 2] == CR &&
+                    requestBytes[i + 3] == LF)
+                {
+                    emptyLinePosition = i + 2;
+                    break;
+                }
+            }
+
+            return emptyLinePosition;
+        }
+
+        private string MakeMessagePartString(byte[] requestBytes, MessagePart messagePart)
+        {
+            return Encoding.ASCII.GetString(requestBytes, messagePart.StartIndex, messagePart.Length);
+        }
+
         private void Parse(string request)
         {
-            string[] lines = request.Split('\n')
-                                .Select(s => s.Replace("\r", ""))
-                                .ToArray();
+            string[] lines = SplitLines(request);
 
             ParseRequestLine(lines[0]);
             ParseQueryParameters(UriWithQuery);
@@ -97,6 +161,28 @@ namespace SimpleRestServer
                     Host = field.Values;
                 }
             }
+        }
+
+        private string[] SplitLines(string header)
+        {
+            return header.Split('\n').Select(s => s.Replace("\r", "")).ToArray();
+        }
+
+        /// <summary>
+        /// This contains start index and byte length for message part
+        /// such as request line and header fields in requset bytes.
+        /// </summary>
+        private class MessagePart
+        {
+            public MessagePart(int startIndex, int lenght)
+            {
+                StartIndex = startIndex;
+                Length = lenght;
+            }
+
+            public int StartIndex { get; private set; }
+
+            public int Length { get; private set; }
         }
 
         private class HeaderFieldLine

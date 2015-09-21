@@ -9,82 +9,175 @@ namespace SimpleRestServer.Tests
 {
     public class HttpRequestTest
     {
-        [TestClass]
         public class SimpleRequestHeaderParseTest
         {
-            private readonly string requestText =
+            private static readonly string requestText =
                 "GET / HTTP/1.1" + "\r\n" +
-                "Host: sample.jp" + "\r\n";
+                "Host: sample.jp" + "\r\n" +
+                "\r\n";
 
-            [TestMethod]
-            public void RequestMethodIsGet()
+            [TestClass]
+            public class WhenParseFromString
             {
-                var request = new HttpRequest(requestText);
+                [TestMethod]
+                public void RequestMethodIsGet()
+                {
+                    var request = new HttpRequest(requestText);
 
-                Assert.AreEqual(HttpRequestMethod.Get, request.Method);
+                    Assert.AreEqual(HttpRequestMethod.Get, request.Method);
+                }
+
+                [TestMethod]
+                public void VersionIs1_1()
+                {
+                    var request = new HttpRequest(requestText);
+
+                    Assert.AreEqual(HttpVersion.Version1_1, request.Version);
+                }
+
+                [TestMethod]
+                public void RequestUriIsRoot()
+                {
+                    var request = new HttpRequest(requestText);
+
+                    Assert.AreEqual("/", request.Uri);
+                }
+
+                [TestMethod]
+                public void HostFieldIsSampleDotJp()
+                {
+                    var request = new HttpRequest(requestText);
+
+                    Assert.AreEqual("sample.jp", request.Host);
+                }
             }
 
-            [TestMethod]
-            public void VersionIs1_1()
+            [TestClass]
+            public class WhenParseFromBytes
             {
-                var request = new HttpRequest(requestText);
+                private byte[] requestBytes = null;
 
-                Assert.AreEqual(HttpVersion.Version1_1, request.Version);
-            }
+                [TestInitialize]
+                public void Initialize()
+                {
+                    requestBytes = Encoding.ASCII.GetBytes(requestText);
+                }
+                [TestMethod]
+                public void RequestMethodIsGet()
+                {
+                    var request = new HttpRequest(requestBytes);
 
-            [TestMethod]
-            public void RequestUriIsRoot()
-            {
-                var request = new HttpRequest(requestText);
+                    Assert.AreEqual(HttpRequestMethod.Get, request.Method);
+                }
 
-                Assert.AreEqual("/", request.Uri);
-            }
+                [TestMethod]
+                public void VersionIs1_1()
+                {
+                    var request = new HttpRequest(requestBytes);
 
-            [TestMethod]
-            public void HostFieldIsSampleDotJp()
-            {
-                var request = new HttpRequest(requestText);
+                    Assert.AreEqual(HttpVersion.Version1_1, request.Version);
+                }
 
-                Assert.AreEqual("sample.jp", request.Host);
+                [TestMethod]
+                public void RequestUriIsRoot()
+                {
+                    var request = new HttpRequest(requestBytes);
+
+                    Assert.AreEqual("/", request.Uri);
+                }
+
+                [TestMethod]
+                public void HostFieldIsSampleDotJp()
+                {
+                    var request = new HttpRequest(requestBytes);
+
+                    Assert.AreEqual("sample.jp", request.Host);
+                }
             }
         }
 
-        [TestClass]
         public class RequestWithGetParameterParseTest
         {
-            private readonly string requestTextTemplate =
+            private static readonly string requestTextTemplate =
                 "GET /index.html{0} HTTP/1.1" + "\r\n" +
-                "Host: sample.jp" + "\r\n";
+                "Host: sample.jp" + "\r\n" +
+                "\r\n";
 
-            [TestMethod]
-            public void GetValueWithSingleKeyValue()
+            [TestClass]
+            public class WhenParseFromString
             {
-                var requestText = String.Format(requestTextTemplate, "?key=value");
+                [TestMethod]
+                public void GetValueWithSingleKeyValue()
+                {
+                    var requestText = String.Format(requestTextTemplate, "?key=value");
 
-                var request = new HttpRequest(requestText);
+                    var request = new HttpRequest(requestText);
 
-                Assert.AreEqual("value", request.Query["key"]);
+                    Assert.AreEqual("value", request.Query["key"]);
+                }
+
+                [TestMethod]
+                public void GetValuesWithMultipleKeyValues()
+                {
+                    var requestText = String.Format(requestTextTemplate, "?key1=value1&key2=value2");
+
+                    var request = new HttpRequest(requestText);
+
+                    Assert.AreEqual("value1", request.Query["key1"]);
+                    Assert.AreEqual("value2", request.Query["key2"]);
+                }
+
+                [TestMethod]
+                public void UriDoesNotContainsQueryPart()
+                {
+                    var requestText = String.Format(requestTextTemplate, "?key=value");
+
+                    var request = new HttpRequest(requestText);
+
+                    Assert.AreEqual("/index.html", request.Uri);
+                }
             }
 
-            [TestMethod]
-            public void GetValuesWithMultipleKeyValues()
+            [TestClass]
+            public class WhenParseFromBytes
             {
-                var requestText = String.Format(requestTextTemplate, "?key1=value1&key2=value2");
+                [TestMethod]
+                public void GetValueWithSingleKeyValue()
+                {
+                    byte[] requestBytes = MakeRequestBytes("?key=value");
 
-                var request = new HttpRequest(requestText);
+                    var request = new HttpRequest(requestBytes);
 
-                Assert.AreEqual("value1", request.Query["key1"]);
-                Assert.AreEqual("value2", request.Query["key2"]);
-            }
+                    Assert.AreEqual("value", request.Query["key"]);
+                }
 
-            [TestMethod]
-            public void UriDoesNotContainsQueryPart()
-            {
-                var requestText = String.Format(requestTextTemplate, "?key=value");
+                [TestMethod]
+                public void GetValuesWithMultipleKeyValues()
+                {
+                    byte[] requestBytes = MakeRequestBytes("?key1=value1&key2=value2");
 
-                var request = new HttpRequest(requestText);
+                    var request = new HttpRequest(requestBytes);
 
-                Assert.AreEqual("/index.html", request.Uri);
+                    Assert.AreEqual("value1", request.Query["key1"]);
+                    Assert.AreEqual("value2", request.Query["key2"]);
+                }
+
+                [TestMethod]
+                public void UriDoesNotContainsQueryPart()
+                {
+                    byte[] requestBytes = MakeRequestBytes("?key=value");
+
+                    var request = new HttpRequest(requestBytes);
+
+                    Assert.AreEqual("/index.html", request.Uri);
+                }
+
+                private byte[] MakeRequestBytes(string queryPart)
+                {
+                    var request = String.Format(requestTextTemplate, queryPart);
+
+                    return Encoding.ASCII.GetBytes(request);
+                }
             }
         }
     }
