@@ -114,8 +114,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HttpRequest.cs" />
+    <Compile Include="HttpRequestMethod.cs" />
     <Compile Include="HttpResponse.cs" />
     <Compile Include="HttpStatus.cs" />
+    <Compile Include="HttpVersion.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Content Include="Properties\SimpleRestServer.rd.xml" />
   </ItemGroup>

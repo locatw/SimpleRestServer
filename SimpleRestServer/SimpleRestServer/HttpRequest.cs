@@ -206,14 +206,4 @@ namespace SimpleRestServer
             public string Values { get; private set; }
         }
     }
-
-    public enum HttpRequestMethod
-    {
-        Get
-    }
-
-    public enum HttpVersion
-    {
-        Version1_1
-    }
 }
