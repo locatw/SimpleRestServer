@@ -6,6 +6,8 @@ namespace SimpleRestServer
     {
         public static readonly HttpStatus Ok = new HttpStatus(200, "OK");
 
+        public static readonly HttpStatus NotFound = new HttpStatus(404, "Not Found");
+
         public HttpStatus(int code, string description)
         {
             Code = code;
