@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
@@ -64,6 +65,14 @@ namespace SimpleRestServer
                     {
                         await input.ReadAsync(buffer, BufferSize, InputStreamOptions.Partial);
 
+                        // Above input.ReadAsync() returns and buffer is empty when unused connection is closing.
+                        // A client (e.g. browser) establishes multiple connections in HTTP specification,
+                        // and when client uses one connection, unused connection is closed when thread that handles it is closing.
+                        if (buffer.Length == 0)
+                        {
+                            return;
+                        }
+
                         byteArrayParts.Add(buffer.ToArray());
 
                         readCompleted = buffer.Length != BufferSize;
@@ -72,6 +81,14 @@ namespace SimpleRestServer
                     requestBytes = byteArrayParts.SelectMany(x => x).ToArray();
                 }
 
+                if (requestBytes.Length == 0)
+                {
+                    var response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.InternalServerError);
+
+                    await WriteResponseAsync(socket, response);
+
+                    return;
+                }
                 var request = HttpRequest.Parse(requestBytes);
 
                 Func<HttpRequest, HttpResponse> action = null;
@@ -79,13 +96,13 @@ namespace SimpleRestServer
                 {
                     var response = action(request);
 
-                    WriteResponseAsync(socket, response);
+                    await WriteResponseAsync(socket, response);
                 }
                 else
                 {
                     var response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.NotFound);
 
-                    WriteResponseAsync(socket, response);
+                    await WriteResponseAsync(socket, response);
                 }
             }
             catch (HttpRequestParseException e)
@@ -105,17 +122,17 @@ namespace SimpleRestServer
                         break;
                 }
 
-                WriteResponseAsync(socket, response);
+                await WriteResponseAsync(socket, response);
             }
             catch (Exception e)
             {
                 var response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.InternalServerError);
 
-                WriteResponseAsync(socket, response);
+                await WriteResponseAsync(socket, response);
             }
         }
 
-        private async void WriteResponseAsync(StreamSocket socket, HttpResponse response)
+        private async Task WriteResponseAsync(StreamSocket socket, HttpResponse response)
         {
             using (IOutputStream output = socket.OutputStream)
             {
