@@ -50,38 +50,66 @@ namespace SimpleRestServer
 
         private async void OnConnectionReceived(StreamSocket socket)
         {
-            byte[] requestBytes = null;
-            using (IInputStream input = socket.InputStream)
+            try
             {
-                List<byte[]> byteArrayParts = new List<byte[]>();
-                byte[] data = new byte[BufferSize];
-                IBuffer buffer = data.AsBuffer();
-                bool readCompleted = false;
-
-                while (!readCompleted)
+                byte[] requestBytes = null;
+                using (IInputStream input = socket.InputStream)
                 {
-                    await input.ReadAsync(buffer, BufferSize, InputStreamOptions.Partial);
+                    List<byte[]> byteArrayParts = new List<byte[]>();
+                    byte[] data = new byte[BufferSize];
+                    IBuffer buffer = data.AsBuffer();
+                    bool readCompleted = false;
 
-                    byteArrayParts.Add(buffer.ToArray());
+                    while (!readCompleted)
+                    {
+                        await input.ReadAsync(buffer, BufferSize, InputStreamOptions.Partial);
 
-                    readCompleted = buffer.Length != BufferSize;
+                        byteArrayParts.Add(buffer.ToArray());
+
+                        readCompleted = buffer.Length != BufferSize;
+                    }
+
+                    requestBytes = byteArrayParts.SelectMany(x => x).ToArray();
                 }
 
-                requestBytes = byteArrayParts.SelectMany(x => x).ToArray();
+                var request = HttpRequest.Parse(requestBytes);
+
+                Func<HttpRequest, HttpResponse> action = null;
+                if (routingTable.TryGetValue(request.Uri, out action))
+                {
+                    var response = action(request);
+
+                    WriteResponseAsync(socket, response);
+                }
+                else
+                {
+                    var response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.NotFound);
+
+                    WriteResponseAsync(socket, response);
+                }
             }
-
-            var request = new HttpRequest(requestBytes);
-
-            Func<HttpRequest, HttpResponse> action = null;
-            if (routingTable.TryGetValue(request.Uri, out action))
+            catch (HttpRequestParseException e)
             {
-                var response = action(request);
+                HttpResponse response = null;
+
+                switch (e.Error)
+                {
+                    case HttpRequestParseError.UnsupportedVersion:
+                        response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.HttpVersionNotSupported);
+                        break;
+                    case HttpRequestParseError.InvalidFormat:
+                    case HttpRequestParseError.UnknownError:
+                    case HttpRequestParseError.UnknownMethod:
+                    default:
+                        response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.BadRequest);
+                        break;
+                }
 
                 WriteResponseAsync(socket, response);
             }
-            else
+            catch (Exception e)
             {
-                var response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.NotFound);
+                var response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.InternalServerError);
 
                 WriteResponseAsync(socket, response);
             }

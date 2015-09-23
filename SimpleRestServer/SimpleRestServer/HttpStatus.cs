@@ -4,9 +4,20 @@ namespace SimpleRestServer
 {
     public class HttpStatus
     {
-        public static readonly HttpStatus Ok = new HttpStatus(200, "OK");
+        public static readonly HttpStatus Ok =
+            new HttpStatus(200, "OK");
 
-        public static readonly HttpStatus NotFound = new HttpStatus(404, "Not Found");
+        public static readonly HttpStatus BadRequest =
+            new HttpStatus(400, "Bad Request");
+
+        public static readonly HttpStatus NotFound =
+            new HttpStatus(404, "Not Found");
+
+        public static readonly HttpStatus InternalServerError =
+            new HttpStatus(500, "Internal Server Error");
+
+        public static readonly HttpStatus HttpVersionNotSupported =
+            new HttpStatus(505, "HTTP Version Not Supported");
 
         public HttpStatus(int code, string description)
         {

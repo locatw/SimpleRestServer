@@ -113,6 +113,8 @@
     <None Include="project.json" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HttpRequestParseError.cs" />
+    <Compile Include="HttpRequestParseException.cs" />
     <Compile Include="HttpRequest.cs" />
     <Compile Include="HttpRequestMethod.cs" />
     <Compile Include="HttpResponse.cs" />

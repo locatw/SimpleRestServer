@@ -9,18 +9,17 @@ namespace SimpleRestServer
 {
     public class HttpRequest
     {
-        private const byte CR = 0x0d;
+        private HttpRequest()
+        { }
 
-        private const byte LF = 0x0a;
-
-        public HttpRequest(byte[] requestBytes)
+        public static HttpRequest Parse(byte[] requestBytes)
         {
-            ParseBytes(requestBytes);
+            return new HttpRequestParser().Parse(requestBytes);
         }
 
-        public HttpRequest(string request)
+        public static HttpRequest Parse(string requestString)
         {
-            Parse(request);
+            return new HttpRequestParser().Parse(requestString);
         }
 
         public HttpRequestMethod Method { get; private set; }
@@ -35,175 +34,240 @@ namespace SimpleRestServer
 
         public IDictionary<string, string> Query { get; private set; }
 
-        private void ParseBytes(byte[] requestBytes)
+        private class HttpRequestParser
         {
-            MessagePart requestLinePart = FindRequestLinePart(requestBytes);
-            MessagePart headerFiledsPart = FindHeaderFieldsPart(requestBytes, requestLinePart);
+            private const byte CR = 0x0d;
 
-            string requestLine = MakeMessagePartString(requestBytes, requestLinePart);
-            string headerFields = MakeMessagePartString(requestBytes, headerFiledsPart);
+            private const byte LF = 0x0a;
 
-            ParseRequestLine(requestLine);
-            ParseQueryParameters(UriWithQuery);
-            ParseHeaderField(SplitLines(headerFields));
-        }
-
-        private MessagePart FindRequestLinePart(byte[] requestBytes)
-        {
-            int endPosition = Array.FindIndex(requestBytes, b => b == CR);
-
-            return new MessagePart(0, endPosition);
-        }
-
-        private MessagePart FindHeaderFieldsPart(byte[] requestBytes, MessagePart requestLinePart)
-        {
-            int emptyLinePosition = FindEmptyLinePosition(requestBytes, requestLinePart.Length);
-
-            if (emptyLinePosition == -1)
+            public HttpRequest Parse(byte[] requestBytes)
             {
-                throw new Exception("invalid HTTP request header format. no empty line exists.");
-            }
-
-            int headerFieldsByteCount = emptyLinePosition - (requestLinePart.Length + 2);
-
-            return new MessagePart(requestLinePart.Length + 2, headerFieldsByteCount);
-        }
-
-        private int FindEmptyLinePosition(byte[] requestBytes, int requestLineEndPosition)
-        {
-            int emptyLinePosition = -1;
-            for (int i = requestLineEndPosition + 2; i <= requestBytes.Length - 4; i++)
-            {
-                if (requestBytes[i + 0] == CR &&
-                    requestBytes[i + 1] == LF &&
-                    requestBytes[i + 2] == CR &&
-                    requestBytes[i + 3] == LF)
+                try
                 {
-                    emptyLinePosition = i + 2;
-                    break;
+                    MessagePart requestLinePart = FindRequestLinePart(requestBytes);
+                    MessagePart headerFiledsPart = FindHeaderFieldsPart(requestBytes, requestLinePart);
+
+                    string requestLineString = MakeMessagePartString(requestBytes, requestLinePart);
+                    string headerFieldsString = MakeMessagePartString(requestBytes, headerFiledsPart);
+
+                    var constructingRequest = new HttpRequest();
+
+                    ParseRequestLine(requestLineString, constructingRequest);
+                    ParseQueryParameters(constructingRequest);
+                    ParseHeaderField(SplitLines(headerFieldsString), constructingRequest);
+
+                    return constructingRequest;
+                }
+                catch (HttpRequestParseException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new HttpRequestParseException(
+                        HttpRequestParseError.UnknownError, "unknown error occurred", e);
                 }
             }
 
-            return emptyLinePosition;
-        }
-
-        private string MakeMessagePartString(byte[] requestBytes, MessagePart messagePart)
-        {
-            return Encoding.ASCII.GetString(requestBytes, messagePart.StartIndex, messagePart.Length);
-        }
-
-        private void Parse(string request)
-        {
-            string[] lines = SplitLines(request);
-
-            ParseRequestLine(lines[0]);
-            ParseQueryParameters(UriWithQuery);
-            ParseHeaderField(lines.Skip(1).ToArray());
-        }
-
-        private void ParseRequestLine(string line)
-        {
-            string[] elems = line.Split(' ');
-
-            HttpRequestMethod method;
-            if (Enum.TryParse(elems[0], true, out method))
+            public HttpRequest Parse(string request)
             {
-                this.Method = method;
-            }
-            else
-            {
-                throw new Exception("unknown request method.");
+                try
+                {
+                    string[] lines = SplitLines(request);
+                    var constructingRequest = new HttpRequest();
+
+                    ParseRequestLine(lines[0], constructingRequest);
+                    ParseQueryParameters(constructingRequest);
+                    ParseHeaderField(lines.Skip(1).ToArray(), constructingRequest);
+
+                    return constructingRequest;
+                }
+                catch (HttpRequestParseException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new HttpRequestParseException(
+                        HttpRequestParseError.UnknownError, "unknown error occurred", e);
+                }
             }
 
-            Uri = elems[1].IndexOf('?') == -1
+            private MessagePart FindRequestLinePart(byte[] requestBytes)
+            {
+                int endPosition = Array.FindIndex(requestBytes, b => b == CR);
+
+                if (endPosition != -1)
+                {
+                    return new MessagePart(0, endPosition);
+                }
+                else
+                {
+                    throw new HttpRequestParseException(
+                        HttpRequestParseError.InvalidFormat, "new line does not exists");
+                }
+            }
+
+            private MessagePart FindHeaderFieldsPart(byte[] requestBytes, MessagePart requestLinePart)
+            {
+                int emptyLinePosition = FindEmptyLinePosition(requestBytes, requestLinePart.Length);
+
+                if (emptyLinePosition != -1)
+                {
+                    int headerFieldsByteCount = emptyLinePosition - (requestLinePart.Length + 2);
+
+                    return new MessagePart(requestLinePart.Length + 2, headerFieldsByteCount);
+                }
+                else
+                {
+                    throw new HttpRequestParseException(
+                            HttpRequestParseError.InvalidFormat, "empty line does not exists");
+                }
+            }
+
+            private int FindEmptyLinePosition(byte[] requestBytes, int requestLineEndPosition)
+            {
+                int emptyLinePosition = -1;
+                for (int i = requestLineEndPosition + 2; i <= requestBytes.Length - 4; i++)
+                {
+                    if (requestBytes[i + 0] == CR &&
+                        requestBytes[i + 1] == LF &&
+                        requestBytes[i + 2] == CR &&
+                        requestBytes[i + 3] == LF)
+                    {
+                        emptyLinePosition = i + 2;
+                        break;
+                    }
+                }
+
+                return emptyLinePosition;
+            }
+
+            private string MakeMessagePartString(byte[] requestBytes, MessagePart messagePart)
+            {
+                return Encoding.ASCII.GetString(requestBytes, messagePart.StartIndex, messagePart.Length);
+            }
+
+            private void ParseRequestLine(string line, HttpRequest constructingRequest)
+            {
+                string[] elems = line.Split(' ');
+                if (elems.Length != 3)
+                {
+                    throw new HttpRequestParseException(
+                        HttpRequestParseError.InvalidFormat, "invalid request line format");
+                }
+
+                HttpRequestMethod method;
+                if (Enum.TryParse(elems[0], true, out method))
+                {
+                    constructingRequest.Method = method;
+                }
+                else
+                {
+                    var message = String.Format("unknown request method: {0}", elems[0]);
+
+                    throw new HttpRequestParseException(
+                        HttpRequestParseError.UnknownMethod, message);
+                }
+
+                constructingRequest.Uri =
+                    elems[1].IndexOf('?') == -1
                         ? elems[1]
                         : elems[1].Substring(0, elems[1].IndexOf('?'));
-            UriWithQuery = elems[1];
+                constructingRequest.UriWithQuery = elems[1];
 
-            switch (elems[2])
-            {
-                case "HTTP/1.1":
-                    this.Version = HttpVersion.Version1_1;
-                    break;
-                default:
-                    throw new Exception("unsupported http version");
-            }
-        }
-
-        private void ParseQueryParameters(string uri)
-        {
-            if (!uri.Contains("?"))
-            {
-                return;
-            }
-
-            string query = uri.Substring(uri.IndexOf('?') + 1);
-            string[] keyValues = query.Split('&');
-
-            Query =
-                keyValues
-                    .Select(keyValue => keyValue.Split('='))
-                    .ToDictionary(keyValue => keyValue[0], keyValue => keyValue[1]);
-
-        }
-
-        private void ParseHeaderField(string[] headerLines)
-        {
-            var fieldLines =
-                headerLines
-                    .Where(line => line.Contains(':'))
-                    .Select(line => HeaderFieldLine.Create(line));
-
-            foreach (var field in fieldLines)
-            {
-                if (field.Field == "Host")
+                switch (elems[2])
                 {
-                    Host = field.Values;
+                    case "HTTP/1.1":
+                        constructingRequest.Version = HttpVersion.Version1_1;
+                        break;
+                    default:
+                        {
+                            var message = String.Format("unsupported HTTP version: {0}", elems[2]);
+
+                            throw new HttpRequestParseException(
+                                HttpRequestParseError.UnsupportedVersion, message);
+                        }
                 }
             }
-        }
 
-        private string[] SplitLines(string header)
-        {
-            return header.Split('\n').Select(s => s.Replace("\r", "")).ToArray();
-        }
-
-        /// <summary>
-        /// This contains start index and byte length for message part
-        /// such as request line and header fields in requset bytes.
-        /// </summary>
-        private class MessagePart
-        {
-            public MessagePart(int startIndex, int lenght)
+            private void ParseQueryParameters(HttpRequest constructingRequest)
             {
-                StartIndex = startIndex;
-                Length = lenght;
+                string uriWithQuery = constructingRequest.UriWithQuery;
+
+                if (!uriWithQuery.Contains("?"))
+                {
+                    return;
+                }
+
+                string query = uriWithQuery.Substring(uriWithQuery.IndexOf('?') + 1);
+                string[] keyValues = query.Split('&');
+
+                constructingRequest.Query =
+                    keyValues
+                        .Select(keyValue => keyValue.Split('='))
+                        .ToDictionary(keyValue => keyValue[0], keyValue => keyValue[1]);
+
             }
 
-            public int StartIndex { get; private set; }
-
-            public int Length { get; private set; }
-        }
-
-        private class HeaderFieldLine
-        {
-            private HeaderFieldLine()
-            { }
-
-            public static HeaderFieldLine Create(string fieldLine)
+            private void ParseHeaderField(string[] headerLines, HttpRequest constructingRequest)
             {
-                string[] parts = fieldLine.Split(':');
+                var fieldLines =
+                    headerLines
+                        .Where(line => line.Contains(':'))
+                        .Select(line => HeaderFieldLine.Create(line));
 
-                var headerFieldLine = new HeaderFieldLine();
-                headerFieldLine.Field = parts[0];
-                headerFieldLine.Values = parts[1].TrimStart();
-
-                return headerFieldLine;
+                foreach (var field in fieldLines)
+                {
+                    if (field.Field == "Host")
+                    {
+                        constructingRequest.Host = field.Values;
+                    }
+                }
             }
 
-            public string Field { get; private set; }
+            private string[] SplitLines(string header)
+            {
+                return header.Split('\n').Select(s => s.Replace("\r", "")).ToArray();
+            }
 
-            public string Values { get; private set; }
+            /// <summary>
+            /// This contains start index and byte length for message part
+            /// such as request line and header fields in requset bytes.
+            /// </summary>
+            private class MessagePart
+            {
+                public MessagePart(int startIndex, int lenght)
+                {
+                    StartIndex = startIndex;
+                    Length = lenght;
+                }
+
+                public int StartIndex { get; private set; }
+
+                public int Length { get; private set; }
+            }
+
+            private class HeaderFieldLine
+            {
+                private HeaderFieldLine()
+                { }
+
+                public static HeaderFieldLine Create(string fieldLine)
+                {
+                    string[] parts = fieldLine.Split(':');
+
+                    var headerFieldLine = new HeaderFieldLine();
+                    headerFieldLine.Field = parts[0];
+                    headerFieldLine.Values = parts[1].TrimStart();
+
+                    return headerFieldLine;
+                }
+
+                public string Field { get; private set; }
+
+                public string Values { get; private set; }
+            }
         }
     }
 }

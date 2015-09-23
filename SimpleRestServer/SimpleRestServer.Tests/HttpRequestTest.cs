@@ -22,7 +22,7 @@ namespace SimpleRestServer.Tests
                 [TestMethod]
                 public void RequestMethodIsGet()
                 {
-                    var request = new HttpRequest(requestText);
+                    var request = HttpRequest.Parse(requestText);
 
                     Assert.AreEqual(HttpRequestMethod.Get, request.Method);
                 }
@@ -30,7 +30,7 @@ namespace SimpleRestServer.Tests
                 [TestMethod]
                 public void VersionIs1_1()
                 {
-                    var request = new HttpRequest(requestText);
+                    var request = HttpRequest.Parse(requestText);
 
                     Assert.AreEqual(HttpVersion.Version1_1, request.Version);
                 }
@@ -38,7 +38,7 @@ namespace SimpleRestServer.Tests
                 [TestMethod]
                 public void RequestUriIsRoot()
                 {
-                    var request = new HttpRequest(requestText);
+                    var request = HttpRequest.Parse(requestText);
 
                     Assert.AreEqual("/", request.Uri);
                 }
@@ -46,7 +46,7 @@ namespace SimpleRestServer.Tests
                 [TestMethod]
                 public void HostFieldIsSampleDotJp()
                 {
-                    var request = new HttpRequest(requestText);
+                    var request = HttpRequest.Parse(requestText);
 
                     Assert.AreEqual("sample.jp", request.Host);
                 }
@@ -65,7 +65,7 @@ namespace SimpleRestServer.Tests
                 [TestMethod]
                 public void RequestMethodIsGet()
                 {
-                    var request = new HttpRequest(requestBytes);
+                    var request = HttpRequest.Parse(requestBytes);
 
                     Assert.AreEqual(HttpRequestMethod.Get, request.Method);
                 }
@@ -73,7 +73,7 @@ namespace SimpleRestServer.Tests
                 [TestMethod]
                 public void VersionIs1_1()
                 {
-                    var request = new HttpRequest(requestBytes);
+                    var request = HttpRequest.Parse(requestBytes);
 
                     Assert.AreEqual(HttpVersion.Version1_1, request.Version);
                 }
@@ -81,7 +81,7 @@ namespace SimpleRestServer.Tests
                 [TestMethod]
                 public void RequestUriIsRoot()
                 {
-                    var request = new HttpRequest(requestBytes);
+                    var request = HttpRequest.Parse(requestBytes);
 
                     Assert.AreEqual("/", request.Uri);
                 }
@@ -89,7 +89,7 @@ namespace SimpleRestServer.Tests
                 [TestMethod]
                 public void HostFieldIsSampleDotJp()
                 {
-                    var request = new HttpRequest(requestBytes);
+                    var request = HttpRequest.Parse(requestBytes);
 
                     Assert.AreEqual("sample.jp", request.Host);
                 }
@@ -111,7 +111,7 @@ namespace SimpleRestServer.Tests
                 {
                     var requestText = String.Format(requestTextTemplate, "?key=value");
 
-                    var request = new HttpRequest(requestText);
+                    var request = HttpRequest.Parse(requestText);
 
                     Assert.AreEqual("value", request.Query["key"]);
                 }
@@ -121,7 +121,7 @@ namespace SimpleRestServer.Tests
                 {
                     var requestText = String.Format(requestTextTemplate, "?key1=value1&key2=value2");
 
-                    var request = new HttpRequest(requestText);
+                    var request = HttpRequest.Parse(requestText);
 
                     Assert.AreEqual("value1", request.Query["key1"]);
                     Assert.AreEqual("value2", request.Query["key2"]);
@@ -132,7 +132,7 @@ namespace SimpleRestServer.Tests
                 {
                     var requestText = String.Format(requestTextTemplate, "?key=value");
 
-                    var request = new HttpRequest(requestText);
+                    var request = HttpRequest.Parse(requestText);
 
                     Assert.AreEqual("/index.html", request.Uri);
                 }
@@ -146,7 +146,7 @@ namespace SimpleRestServer.Tests
                 {
                     byte[] requestBytes = MakeRequestBytes("?key=value");
 
-                    var request = new HttpRequest(requestBytes);
+                    var request = HttpRequest.Parse(requestBytes);
 
                     Assert.AreEqual("value", request.Query["key"]);
                 }
@@ -156,7 +156,7 @@ namespace SimpleRestServer.Tests
                 {
                     byte[] requestBytes = MakeRequestBytes("?key1=value1&key2=value2");
 
-                    var request = new HttpRequest(requestBytes);
+                    var request = HttpRequest.Parse(requestBytes);
 
                     Assert.AreEqual("value1", request.Query["key1"]);
                     Assert.AreEqual("value2", request.Query["key2"]);
@@ -167,7 +167,7 @@ namespace SimpleRestServer.Tests
                 {
                     byte[] requestBytes = MakeRequestBytes("?key=value");
 
-                    var request = new HttpRequest(requestBytes);
+                    var request = HttpRequest.Parse(requestBytes);
 
                     Assert.AreEqual("/index.html", request.Uri);
                 }
