@@ -80,6 +80,7 @@ namespace SampleApp.BackgroundService
 
             var response = new HttpResponse(HttpVersion.Version1_1, HttpStatus.Ok);
             response.SetContent(body);
+            response.SetConnection(HttpHeaderField.Connection.KeepAlive);
 
             return response;
         }

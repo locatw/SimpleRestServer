@@ -13,6 +13,7 @@ namespace SimpleRestServer
             Version = version;
             Status = status;
             Content = String.Empty;
+            Connection = HttpHeaderField.Connection.KeepAlive;
         }
 
         public byte[] ToByteArray()
@@ -30,6 +31,9 @@ namespace SimpleRestServer
                 builder.Append(String.Format("Content-Length: {0}", Encoding.ASCII.GetByteCount(Content)));
                 builder.Append("\r\n");
             }
+
+            builder.AppendFormat("Connection: {0}", Connection.ConvertToString());
+            builder.Append("\r\n");
 
             builder.Append("\r\n");
 
@@ -52,9 +56,16 @@ namespace SimpleRestServer
             Content = content;
         }
 
+        public void SetConnection(HttpHeaderField.Connection connection)
+        {
+            Connection = connection;
+        }
+
         public HttpVersion Version { get; private set; }
 
         public HttpStatus Status { get; private set; }
+
+        public HttpHeaderField.Connection Connection { get; private set; }
 
         public string Content { get; private set; }
 
